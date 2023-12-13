@@ -71,13 +71,14 @@ class _MainScreenState extends State<MainScreen> {
   // This function is called if context is mounted!
   Future<void> createCategory(
       {required String categoryName, required BuildContext context}) async {
-    var res = await SupabaseApiUtility().fetchCategories();
+    // var res = await SupabaseApiUtility().fetchCategories();
     // print(res);
-    return;
+    // return;
     setState(() {
       _isLoading = true;
     });
     try {
+      // TODO How to use catchError() of Future object
       await context
           .read<SupabaseProvider>()
           .createCategory(categoryName: categoryName, context: context);

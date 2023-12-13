@@ -26,40 +26,74 @@ class SupabaseApiUtility {
     supabaseClient = Supabase.instance.client;
   }
 
-  /// The return type will be a list that holds the newly added Category item. If the category item already
-  /// exists, then the list will be empty
-  Future<List<dynamic>> insertNewCategory(
-      {required String categoryName}) async {
+  /// The return type will be a list that holds the newly added Category. If the category already
+  /// exists, then the list will be empty, if it is nwq, then the response will be a list
+  /// of length 1, holding the newly added Category
+  Future<Category?> insertNewCategory({required String categoryName}) async {
     var currentUser = supabaseClient.auth.currentUser;
     if (currentUser == null) {
       throw Exception('An authenticated user is needed');
     }
-    var res = await supabaseClient.from('categories').upsert({
+    var response = await supabaseClient.from('categories').upsert({
       'created_at': DateTime.now().toString(),
       'user_id': currentUser.id,
       'category_name': categoryName
     }, onConflict: 'category_name', ignoreDuplicates: true).select()
         as List<dynamic>;
-    return res;
+    return (response.isEmpty ? null : Category.fromApi(response[0]));
+  }
+
+  /// The return type will be a list that holds the newly added Category Item. If the category Item already
+  /// exists, then the list will be empty, if it is nwq, then the response will be a list
+  /// of length 1, holding the newly added Category Item
+  Future<CategoryItem?> insertNewCategoryItem(
+      {required String categoryItemName, required int categoryId}) async {
+    var currentUser = supabaseClient.auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('An authenticated user is needed');
+    }
+    var response = await supabaseClient.from('category_items').upsert({
+      'created_at': DateTime.now().toString(),
+      'user_id': currentUser.id,
+      'category_item_name': categoryItemName,
+      'category_id': categoryId
+    }, onConflict: 'category_item_name', ignoreDuplicates: true).select()
+        as List<dynamic>;
+    return (response.isEmpty ? null : CategoryItem.fromApi(response[0]));
+  }
+
+  Future<void> deleteCategory({required int categoryId}) async {
+    await supabaseClient.from('categories').delete().match({'id': categoryId});
+  }
+
+  // TODO Do we need the category ID to delete a category item?
+  Future<void> deleteCategoryItem({required int categoryItemId}) async {
+    await supabaseClient
+        .from('category_items')
+        .delete()
+        .match({'id': categoryItemId});
   }
 
   Future<List<Category>> fetchCategories() async {
     final response = await supabaseClient.from('categories').select('''
       id,category_name,category_items(id,category_item_name,checked)
       ''').order('created_at', ascending: false) as List<dynamic>;
-    print(response);
-    final categories = response.map((dynamic categoryObject) =>
-      Category.fromApi(categoryObject)
-    ).toList();
+    final categories = response
+        .map((dynamic categoryObject) => Category.fromApi(categoryObject))
+        .toList();
     return categories;
   }
 
-  Future<List<CategoryItem>> fetchCategoryItems({required int categoryId}) async {
+  Future<List<CategoryItem>> fetchCategoryItems(
+      {required int categoryId}) async {
     final response = await supabaseClient.from('category_items').select('''
       id,category_item_name,checked,category_id
-      ''').eq('category_id', categoryId).order('created_at', ascending: false) as List<dynamic>;
-    final categoryItems = response.map((dynamic categoryItemObject) =>
-      CategoryItem.fromApi(categoryItemObject)).toList();
+      ''').eq('category_id', categoryId).order('created_at', ascending: false)
+        as List<dynamic>;
+    final categoryItems = response
+        .map((dynamic categoryItemObject) =>
+            CategoryItem.fromApi(categoryItemObject))
+        .toList();
     return categoryItems;
   }
 }

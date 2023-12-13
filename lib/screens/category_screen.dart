@@ -102,7 +102,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 if (context.mounted) {
                   context.read<CategoriesProvider>().addCategoryItem(
                       widget.categoryName,
-                      CategoryItem(name: newCategory, id: 909));
+                      CategoryItem(name: newCategory, id: 909, categoryId: 01));
                 } else {
                   throw Exception('Context was not yet mounted');
                 }
