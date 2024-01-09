@@ -1,3 +1,4 @@
+import 'package:categorizy/utilities/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -39,7 +40,7 @@ class CustomDrawer extends StatelessWidget {
                         throw Exception('Context was not yet mounted');
                       }
                     } else {
-                      print('Decided not to delete category');
+                      AppLogger().logger.i('Decided not to delete category');
                     }
                   },
                 ),

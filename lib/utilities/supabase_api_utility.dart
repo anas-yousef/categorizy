@@ -1,4 +1,6 @@
+import 'package:categorizy/utilities/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../models/category.dart';
 import '../models/category_item.dart';
@@ -14,9 +16,8 @@ class SupabaseApiUtility {
 
   Future<Supabase> getSupabaseInitializer() {
     return Supabase.initialize(
-      url: 'https://cllxiizwxphmrtyrcoqj.supabase.co',
-      anonKey:
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsbHhpaXp3eHBobXJ0eXJjb3FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDA4Mjc5NTEsImV4cCI6MjAxNjQwMzk1MX0.pxq0x9pwpFFOguBUJ_D95Gk0cKoDe4-lIPsOFu0zw0I',
+      url: dotenv.env['SUPB_URL']!,
+      anonKey: dotenv.env['SUPB_ANON_KEY']!,
       authFlowType: AuthFlowType.pkce,
     );
   }
@@ -62,6 +63,13 @@ class SupabaseApiUtility {
     return (response.isEmpty ? null : CategoryItem.fromApi(response[0]));
   }
 
+  Future<CategoryItem?> updateCategoryItem(
+      {required int categoryItemId, required bool newCheckedValue}) async {
+    var response = await supabaseClient.from('category_items').update(
+        {'checked': newCheckedValue}).match({'id': categoryItemId}).select();
+    return (response.isEmpty ? null : CategoryItem.fromApi(response[0]));
+  }
+
   Future<void> deleteCategory({required int categoryId}) async {
     await supabaseClient.from('categories').delete().match({'id': categoryId});
   }
@@ -75,12 +83,14 @@ class SupabaseApiUtility {
   }
 
   Future<List<Category>> fetchCategories() async {
+    // TODO DO NOT USE MAP!!!!!!!!!!
     final response = await supabaseClient.from('categories').select('''
-      id,category_name,category_items(id,category_item_name,checked)
+      id,category_name,category_items(id,category_item_name,checked,category_id)
       ''').order('created_at', ascending: false) as List<dynamic>;
-    final categories = response
-        .map((dynamic categoryObject) => Category.fromApi(categoryObject))
-        .toList();
+    List<Category> categories =
+        response.map<Category>((dynamic categoryObject) {
+      return Category.fromApi(categoryObject);
+    }).toList();
     return categories;
   }
 

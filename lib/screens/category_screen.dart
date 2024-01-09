@@ -2,24 +2,57 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
-import '/../providers/categories_provider.dart';
 import '../models/category_item.dart';
-import '../helpers/confirm_delete_dialog_builder.dart';
+import '../providers/supabase_provider.dart';
+import '../utilities/app_logger.dart';
+import '../widgets/category_item_widget.dart';
 
 class CategoryScreen extends StatefulWidget {
   final String categoryName;
-  const CategoryScreen({super.key, required this.categoryName});
+  final int categoryId;
+  const CategoryScreen(
+      {super.key, required this.categoryName, required this.categoryId});
 
   @override
   State<CategoryScreen> createState() => _CategoryScreenState();
 }
 
 class _CategoryScreenState extends State<CategoryScreen> {
+  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
+      GlobalKey<RefreshIndicatorState>();
+  late bool _isAdding;
+  late Future<void> _initCategoryItemsData;
+  late int _categoryIndex;
+  late List<CategoryItem> _categoryItems;
   late TextEditingController textFieldController;
   @override
   void initState() {
     textFieldController = TextEditingController();
+    _isAdding = false;
+    _categoryIndex = context
+        .read<SupabaseProvider>()
+        .getCategoryIndex(categoryId: widget.categoryId);
+    _initCategoryItemsData = _initCategoryItems();
     super.initState();
+  }
+
+  Future<void> _initCategoryItems() async {
+    AppLogger().logger.i('Init category items');
+    SupabaseProvider supabaseProvider = context.read<SupabaseProvider>();
+    await supabaseProvider.getCategoryItems(categoryId: widget.categoryId);
+    _categoryItems = supabaseProvider.categories[_categoryIndex].categoryItems;
+  }
+
+  Future<void> _refreshCategoryItems({bool fetchCategoryItems = false}) async {
+    AppLogger().logger.i('Refreshing category items');
+    SupabaseProvider supabaseProvider = context.read<SupabaseProvider>();
+    if (fetchCategoryItems == true) {
+      await supabaseProvider.getCategoryItems(categoryId: widget.categoryId);
+    }
+    setState(() {
+      _categoryItems =
+          supabaseProvider.categories[_categoryIndex].categoryItems;
+    });
   }
 
   @override
@@ -65,98 +98,111 @@ class _CategoryScreenState extends State<CategoryScreen> {
     );
   }
 
+  Widget _listView(AsyncSnapshot<void> snapshot) {
+    if (snapshot.connectionState == ConnectionState.done) {
+      return ListView.separated(
+        itemCount: _categoryItems.length,
+        separatorBuilder: (BuildContext context, int index) => const Divider(
+          color: Colors.black,
+        ),
+        itemBuilder: (BuildContext context, int index) {
+          return CategoryItemWidget(
+            categoryItems: _categoryItems,
+            categoryItemIndex: index,
+            refreshCategoryItems: _refreshCategoryItems,
+          );
+        },
+      );
+    } else if (snapshot.hasError) {
+      AppLogger().logger.e('${snapshot.error}');
+      return Center(
+        child: Text('Error: ${snapshot.error}'),
+      );
+    } else {
+      return _progressIndicationWidget('Loading data...');
+    }
+  }
+
+  Widget _progressIndicationWidget(String message) {
+    List<Widget> children = [
+      const SizedBox(
+        width: 60,
+        height: 60,
+        child: CircularProgressIndicator(),
+      ),
+      Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: Text(message),
+      ),
+    ];
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: children,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    List<CategoryItem> categoryItems = context
-        .watch<CategoriesProvider>()
-        .getCategoryItems(widget.categoryName);
-    // This will sort the category items by the checked property, with "unchecked" taking precedence
-    categoryItems.sort(
-      (item1, item2) {
-        if (!item2.checked) {
-          return 1;
-        }
-        return -1;
-      },
-    );
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.categoryName,
-          style: const TextStyle(
-            color: Colors.white,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.add,
-              color: Colors.black,
+    return Consumer<SupabaseProvider>(
+        builder: (context, supabaseProvider, child) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            widget.categoryName,
+            style: const TextStyle(
+              color: Colors.white,
             ),
-            onPressed: () async {
-              final newCategory = await _newCategoryDialogBuilder(
-                context: context,
-                textFieldController: textFieldController,
-              );
-              if (newCategory != null && newCategory.isNotEmpty) {
-                if (context.mounted) {
-                  context.read<CategoriesProvider>().addCategoryItem(
-                      widget.categoryName,
-                      CategoryItem(name: newCategory, id: 909, categoryId: 01));
-                } else {
-                  throw Exception('Context was not yet mounted');
-                }
-              }
-            },
-          )
-        ],
-        backgroundColor: Colors.blue.shade700,
-      ),
-      body: Container(
-        margin: EdgeInsets.only(
-            // top: 20,
-            ),
-        child: ListView.separated(
-          itemCount: categoryItems.length,
-          separatorBuilder: (BuildContext context, int index) => const Divider(
-            color: Colors.black,
           ),
-          itemBuilder: (BuildContext context, int index) {
-            final category = categoryItems[index];
-            return Dismissible(
-              key: Key(category.name),
-              onDismissed: (direction) {
-                // Remove the item from the data source.
-                context
-                    .read<CategoriesProvider>()
-                    .deleteCategoryItem(widget.categoryName, category);
-                // Then show a snackbar.
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${category.name} dismissed')),
-                );
-              },
-              confirmDismiss: (direction) async {
-                return await confirmDismissDialogBuilder(context: context);
-              },
-              background: Container(color: Colors.red),
-              child: ListTile(
-                trailing: Checkbox(
-                  onChanged: (bool? value) {
-                    if (value != null) {
-                      context.read<CategoriesProvider>().editCategoryItem(
-                          widget.categoryName, category.copy(checked: value));
-                    }
-                  },
-                  value: category.checked,
-                ),
-                title: Text(
-                  category.name,
-                ),
+          actions: [
+            IconButton(
+              icon: const Icon(
+                Icons.add,
+                color: Colors.black,
               ),
+              onPressed: () async {
+                ScaffoldMessengerState scaffoldMessenger =
+                    ScaffoldMessenger.of(context);
+                final newCategory = await _newCategoryDialogBuilder(
+                  context: context,
+                  textFieldController: textFieldController,
+                );
+                if (newCategory != null && newCategory.isNotEmpty) {
+                  setState(() {
+                    _isAdding = true;
+                  });
+                  await supabaseProvider.createCategoryItem(
+                      categoryItemName: newCategory,
+                      categoryId: widget.categoryId,
+                      scaffoldMessenger: scaffoldMessenger);
+                  setState(() {
+                    _isAdding = false;
+                    _categoryItems = supabaseProvider
+                        .categories[_categoryIndex].categoryItems;
+                  });
+                }
+              },
+            )
+          ],
+          backgroundColor: Colors.blue.shade700,
+        ),
+        body: FutureBuilder<void>(
+          future: _initCategoryItemsData,
+          builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
+            return RefreshIndicator(
+              key: _refreshIndicatorKey,
+              color: Colors.black,
+              backgroundColor: Colors.orangeAccent,
+              onRefresh: () async =>
+                  _refreshCategoryItems(fetchCategoryItems: true),
+              child: _isAdding
+                  ? _progressIndicationWidget('Adding Category ...')
+                  : _listView(snapshot),
             );
           },
         ),
-      ),
-    );
+      );
+    });
   }
 }

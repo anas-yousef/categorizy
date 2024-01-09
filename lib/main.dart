@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'providers/supabase_provider.dart';
 import 'providers/categories_provider.dart';
@@ -14,6 +14,7 @@ import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: 'assets/.env');
   // Initialize our local data accessor, which is used to read/write/delete local data
   await LocalDataAccessor().init();
   // await SupabaseProvider.init();
@@ -49,7 +50,7 @@ class MyApp extends StatelessWidget {
         name: 'mainScreen',
         path: '/main-screen',
         builder: (BuildContext context, GoRouterState state) =>
-            const MainScreen(title: 'Flutter Demo Home Page 2'),
+            const MainScreen(title: 'Categorizy'),
       ),
       GoRoute(
         name: 'loginScreen',
@@ -59,8 +60,9 @@ class MyApp extends StatelessWidget {
       ),
       GoRoute(
         name: 'categoryScreen',
-        path: '/category/:categoryName',
+        path: '/category/:categoryId/:categoryName',
         builder: (BuildContext context, GoRouterState state) => CategoryScreen(
+          categoryId: int.parse(state.pathParameters['categoryId']!),
           categoryName: state.pathParameters['categoryName']!,
         ),
       ),
@@ -95,115 +97,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-// class HomePage extends StatefulWidget {
-//   final String title;
-//   const HomePage({super.key, required this.title});
-
-//   @override
-//   State<HomePage> createState() => _HomePageState();
-// }
-
-// class _HomePageState extends State<HomePage> {
-//   late TextEditingController textFieldController;
-//   @override
-//   void initState() {
-//     textFieldController = TextEditingController();
-//     super.initState();
-//   }
-
-//   @override
-//   void dispose() {
-//     // Clean up the controller when the widget is removed from the
-//     // widget tree.
-//     textFieldController.dispose();
-//     super.dispose();
-//   }
-
-//   Future<String?> _dialogBuilder(
-//       {required BuildContext context,
-//       required TextEditingController textFieldController}) async {
-//     return showDialog<String?>(
-//       context: context,
-//       builder: (context) => CupertinoAlertDialog(
-//         title: Text('Enter new category you fucker:'),
-//         content: CupertinoTextField(
-//           autofocus: true,
-//           controller: textFieldController,
-//         ),
-//         actions: [
-//           TextButton(
-//             onPressed: () {
-//               Navigator.of(context).pop();
-//               textFieldController.clear();
-//             },
-//             child: const Text(
-//               'Cancel',
-//             ),
-//           ),
-//           TextButton(
-//             onPressed: () {
-//               Navigator.of(context).pop(textFieldController.text);
-//               textFieldController.clear();
-//             },
-//             child: const Text(
-//               'Save',
-//             ),
-//           )
-//         ],
-//       ),
-//     );
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Consumer<CategoriesProvider>(builder: (BuildContext context,
-//         CategoriesProvider categoriesProvider, Widget? child) {
-//       var categoryNames = categoriesProvider.getCategoryNames();
-//       return Scaffold(
-//         appBar: AppBar(
-//           backgroundColor: Colors.blue.shade700,
-//           title: Text(
-//             widget.title,
-//             style: const TextStyle(
-//               color: Colors.white,
-//             ),
-//           ),
-//         ),
-//         body: Container(),
-//         drawer: CustomDrawer(
-//           categoryNames: categoryNames,
-//         ),
-//         floatingActionButton: FloatingActionButton(
-//           onPressed: () async {
-//             final newCategory = await _dialogBuilder(
-//               context: context,
-//               textFieldController: textFieldController,
-//             );
-//             if (!categoryNames.contains(newCategory)) {
-//               if (newCategory != null && newCategory.isNotEmpty) {
-//                 setState(
-//                   () {
-//                     categoriesProvider.addCategory(newCategory);
-//                   },
-//                 );
-//               }
-//             } else {
-//               if (context.mounted) {
-//                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-//                   content:
-//                       Text('There is already a category with the same name'),
-//                 ));
-//               } else {
-//                 print('Context not mounted');
-//               }
-//             }
-//           },
-//           tooltip: 'Add new category page',
-//           child: const Icon(Icons.add),
-//         ),
-//         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-//       );
-//     });
-//   }
-// }

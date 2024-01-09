@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../utilities/app_logger.dart';
 import '../models/category.dart';
 import '../models/category_item.dart';
 import '/utilities/supabase_api_utility.dart';
-import '../utilities/custom_exception.dart';
 
 class SupabaseProvider extends ChangeNotifier {
   List<Category> categories = [];
 
-  // Get the index of the Category item that has the id $categoryId
-  int _getCategoryIndex({required int categoryId}) {
+  // Get the index of the Category that has the id $categoryId
+  int getCategoryIndex({required int categoryId}) {
     var categoryIndexId =
         categories.indexWhere((element) => element.id == categoryId);
     if (categoryIndexId == -1) {
@@ -18,101 +18,163 @@ class SupabaseProvider extends ChangeNotifier {
     return categoryIndexId;
   }
 
-  // Will be called only if the the build context object is mounted
-  Future<void> createCategory(
-      {required String categoryName, required BuildContext context}) async {
-    try {
-      var newlyAddedCategory = await SupabaseApiUtility()
-          .insertNewCategory(categoryName: categoryName);
-      if (newlyAddedCategory == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('There is already a category with the same name'),
-        ));
-      } else {
-        categories.add(newlyAddedCategory);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Category "$categoryName" created successfully')),
-        );
-      }
-      notifyListeners();
-    } on Exception catch (e) {
-      throw CustomException(
-          message: 'Error while creating a new category via Supabase API',
-          mainException: e);
+  // Get the index of the Category Item that has the id $categoryItemId
+  int getCategoryItemIndex(
+      {required Category category, required int categoryItemId}) {
+    var categoryItemIndexId = category.categoryItems
+        .indexWhere((element) => element.id == categoryItemId);
+    if (categoryItemIndexId == -1) {
+      throw Exception(
+          'There is no category item with the ID $categoryItemIndexId');
     }
+    return categoryItemIndexId;
+  }
+
+  Future<void> createCategory(
+      {required String categoryName,
+      required ScaffoldMessengerState scaffoldMessenger}) async {
+    try {
+      Category? newlyAddedCategory =
+          await Future.delayed(const Duration(milliseconds: 500), () async {
+        return await SupabaseApiUtility()
+            .insertNewCategory(categoryName: categoryName);
+      });
+      if (newlyAddedCategory == null) {
+        scaffoldMessenger.showSnackBar(const SnackBar(
+            content: Text('There is already a category with the same name')));
+      } else {
+        categories.insert(0, newlyAddedCategory);
+        scaffoldMessenger.showSnackBar(SnackBar(
+            content: Text('Category "$categoryName" created successfully')));
+      }
+    } on Exception catch (error) {
+      AppLogger().logger.e(error.toString());
+    }
+    notifyListeners();
   }
 
   // Will be called only if the the build context object is mounted
   Future<void> createCategoryItem(
       {required String categoryItemName,
       required int categoryId,
-      required BuildContext context}) async {
+      required ScaffoldMessengerState scaffoldMessenger}) async {
     try {
-      var newlyAddedCategoryItem = await SupabaseApiUtility()
-          .insertNewCategoryItem(
-              categoryItemName: categoryItemName, categoryId: categoryId);
+      CategoryItem? newlyAddedCategoryItem =
+          await Future.delayed(const Duration(milliseconds: 500), () async {
+        return await SupabaseApiUtility().insertNewCategoryItem(
+            categoryItemName: categoryItemName, categoryId: categoryId);
+      });
+      // TODO Throw an exception, and let the parent function handle it
       if (newlyAddedCategoryItem == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('There is already a category item with the same name'),
-        ));
+        scaffoldMessenger.showSnackBar(const SnackBar(
+            content:
+                Text('There is already a category item with the same name')));
       } else {
-        var categoryIndexId = _getCategoryIndex(categoryId: categoryId);
-        categories[categoryIndexId] = categories[categoryIndexId].copy(
-            categoryItems: [
-              ...categories[categoryIndexId].categoryItems,
-              newlyAddedCategoryItem
-            ]);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  'Category Item "$categoryItemName" created successfully')),
-        );
+        var categoryIndexId = getCategoryIndex(categoryId: categoryId);
+        categories[categoryIndexId] =
+            categories[categoryIndexId].copy(categoryItems: [
+          newlyAddedCategoryItem,
+          ...categories[categoryIndexId].categoryItems,
+        ]);
+        scaffoldMessenger.showSnackBar(SnackBar(
+            content: Text(
+                'Category Item "$categoryItemName" created successfully')));
       }
-      notifyListeners();
-    } on Exception catch (e) {
-      throw CustomException(
-          message: 'Error while creating a new category via Supabase API',
-          mainException: e);
+    } on Exception catch (error) {
+      AppLogger().logger.e(error.toString());
     }
+    notifyListeners();
   }
 
   Future<void> getCategories() async {
-    categories = await SupabaseApiUtility().fetchCategories();
+    try {
+      categories = await SupabaseApiUtility().fetchCategories();
+      AppLogger().logger.i('Successfully got all categories');
+    } catch (error) {
+      AppLogger().logger.e(error.toString());
+    }
     notifyListeners();
   }
 
   Future<void> getCategoryItems({required int categoryId}) async {
-    var categoryItems =
-        await SupabaseApiUtility().fetchCategoryItems(categoryId: categoryId);
-    var categoryIndexId = _getCategoryIndex(categoryId: categoryId);
-    categories[categoryIndexId] =
-        categories[categoryIndexId].copy(categoryItems: categoryItems);
+    try {
+      var categoryItems =
+          await SupabaseApiUtility().fetchCategoryItems(categoryId: categoryId);
+      var categoryIndexId = getCategoryIndex(categoryId: categoryId);
+      categories[categoryIndexId] =
+          categories[categoryIndexId].copy(categoryItems: categoryItems);
+      AppLogger()
+          .logger
+          .i('Successfully got category items for category ID $categoryId');
+    } catch (error) {
+      AppLogger().logger.e(error.toString());
+    }
+    notifyListeners();
+  }
+
+  Future<void> updateCategoryItem(
+      {required int categoryId,
+      required int categoryItemId,
+      required bool newCheckedValue}) async {
+    try {
+      CategoryItem? newCategoryItem =
+          await Future.delayed(const Duration(milliseconds: 500), () async {
+        return await SupabaseApiUtility().updateCategoryItem(
+            categoryItemId: categoryItemId, newCheckedValue: newCheckedValue);
+      });
+      if (newCategoryItem == null) {
+        throw Exception('How come the category item is null');
+      }
+      var categoryIndexId = getCategoryIndex(categoryId: categoryId);
+      var categoryItemIndexId = getCategoryItemIndex(
+          category: categories[categoryIndexId],
+          categoryItemId: categoryItemId);
+      categories[categoryIndexId].categoryItems[categoryItemIndexId] =
+          newCategoryItem;
+    } catch (error) {
+      AppLogger().logger.e(error.toString());
+    }
     notifyListeners();
   }
 
   Future<void> deleteCategory(
       {required int categoryId,
       required String categoryName,
-      required BuildContext context}) async {
-    await SupabaseApiUtility().deleteCategory(categoryId: categoryId);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Category "$categoryName" deleted successfully')),
-    );
+      required ScaffoldMessengerState scaffoldMessenger}) async {
+    try {
+      await Future.delayed(const Duration(milliseconds: 500), () async {
+        await SupabaseApiUtility().deleteCategory(categoryId: categoryId);
+      });
+      var categoryIndexId = getCategoryIndex(categoryId: categoryId);
+      categories.removeAt(categoryIndexId);
+      scaffoldMessenger.showSnackBar(SnackBar(
+          content: Text('Category $categoryName deleted successfully')));
+    } catch (error) {
+      AppLogger().logger.e(error.toString());
+    }
     notifyListeners();
   }
 
   Future<void> deleteCategoryItem(
       {required int categoryItemId,
+      required int categoryId,
       required String categoryItemName,
-      required BuildContext context}) async {
-    await SupabaseApiUtility()
-        .deleteCategoryItem(categoryItemId: categoryItemId);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      required ScaffoldMessengerState scaffoldMessenger}) async {
+    try {
+      await Future.delayed(const Duration(milliseconds: 500), () async {
+        await SupabaseApiUtility()
+            .deleteCategoryItem(categoryItemId: categoryItemId);
+      });
+      var categoryIndexId = getCategoryIndex(categoryId: categoryId);
+      categories[categoryIndexId]
+          .categoryItems
+          .removeWhere((element) => element.id == categoryItemId);
+      scaffoldMessenger.showSnackBar(SnackBar(
           content:
-              Text('Category item "$categoryItemName" deleted successfully')),
-    );
+              Text('Category item $categoryItemName deleted successfully')));
+    } catch (error) {
+      AppLogger().logger.e(error.toString());
+    }
     notifyListeners();
   }
 }

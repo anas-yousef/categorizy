@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '/utilities/supabase_api_utility.dart';
-import '../providers/supabase_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

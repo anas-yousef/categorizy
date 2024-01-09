@@ -1,11 +1,11 @@
 import 'package:categorizy/providers/supabase_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/categories_provider.dart';
-import '../utilities/supabase_api_utility.dart';
-import '../widgets/custom_drawer_widget.dart';
+import '../helpers/confirm_delete_dialog_builder.dart';
+import '../utilities/app_logger.dart';
 
 class MainScreen extends StatefulWidget {
   final String title;
@@ -16,12 +16,12 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  late bool _isLoading;
+  late bool _isAdding;
   late TextEditingController textFieldController;
   @override
   void initState() {
     textFieldController = TextEditingController();
-    _isLoading = false;
+    _isAdding = false;
     super.initState();
   }
 
@@ -39,7 +39,7 @@ class _MainScreenState extends State<MainScreen> {
     return showDialog<String?>(
       context: context,
       builder: (context) => CupertinoAlertDialog(
-        title: Text('Enter new category you fucker:'),
+        title: const Text('Enter new category:'),
         content: CupertinoTextField(
           autofocus: true,
           controller: textFieldController,
@@ -49,6 +49,7 @@ class _MainScreenState extends State<MainScreen> {
             onPressed: () {
               Navigator.of(context).pop();
               textFieldController.clear();
+              AppLogger().logger.i('Cancelled');
             },
             child: const Text(
               'Cancel',
@@ -68,45 +69,129 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // This function is called if context is mounted!
-  Future<void> createCategory(
-      {required String categoryName, required BuildContext context}) async {
-    // var res = await SupabaseApiUtility().fetchCategories();
-    // print(res);
-    // return;
+  Future<void> createCategory({required String categoryName}) async {
     setState(() {
-      _isLoading = true;
+      _isAdding = true;
     });
     try {
       // TODO How to use catchError() of Future object
-      await context
-          .read<SupabaseProvider>()
-          .createCategory(categoryName: categoryName, context: context);
+      ScaffoldMessengerState scaffoldMessenger = ScaffoldMessenger.of(context);
+      await context.read<SupabaseProvider>().createCategory(
+          categoryName: categoryName, scaffoldMessenger: scaffoldMessenger);
     } on Exception catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString()),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
-      // TODO Should be using a logger
-      print(error.toString());
+      AppLogger().logger.e(error.toString());
     }
     setState(() {
-      _isLoading = false;
+      _isAdding = false;
     });
   }
 
-  Widget _progressIndicationWidget() {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.blue.shade700,
+        title: Text(
+          widget.title,
+          style: const TextStyle(
+            color: Colors.white,
+          ),
+        ),
+      ),
+      body: CategoriesWidget(isAddingCategory: _isAdding),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final newCategory = await _dialogBuilder(
+            context: context,
+            textFieldController: textFieldController,
+          );
+          if (newCategory != null && newCategory.isNotEmpty) {
+            await createCategory(categoryName: newCategory);
+          } else {
+            AppLogger().logger.i('Category can\'t be empty');
+          }
+        },
+        tooltip: 'Add new category page',
+        child: const Icon(Icons.add),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+}
+
+class CategoriesWidget extends StatefulWidget {
+  final bool isAddingCategory;
+  const CategoriesWidget({super.key, required this.isAddingCategory});
+
+  @override
+  State<CategoriesWidget> createState() => _CategoriesWidgetState();
+}
+
+class _CategoriesWidgetState extends State<CategoriesWidget> {
+  late Future<void> _initCategoriesData;
+  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
+      GlobalKey<RefreshIndicatorState>();
+  @override
+  void initState() {
+    super.initState();
+    _initCategoriesData = _refreshCategories();
+  }
+
+  Future<void> _refreshCategories() async {
+    AppLogger().logger.i('Refreshing categories');
+    await context.read<SupabaseProvider>().getCategories();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+        future: _initCategoriesData,
+        builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
+          return RefreshIndicator(
+            key: _refreshIndicatorKey,
+            color: Colors.black,
+            backgroundColor: Colors.purpleAccent,
+            onRefresh: _refreshCategories,
+            child: CategoriesBuilder(
+              isAddingCategory: widget.isAddingCategory,
+              snapshot: snapshot,
+            ),
+          );
+        });
+  }
+}
+
+class CategoriesBuilder extends StatefulWidget {
+  final AsyncSnapshot<void> snapshot;
+  final bool isAddingCategory;
+  const CategoriesBuilder({
+    super.key,
+    required this.snapshot,
+    required this.isAddingCategory,
+  });
+
+  @override
+  State<CategoriesBuilder> createState() => _CategoriesBuilderState();
+}
+
+class _CategoriesBuilderState extends State<CategoriesBuilder> {
+  late bool _isDeleting;
+  @override
+  void initState() {
+    super.initState();
+    _isDeleting = false;
+  }
+
+  Widget _progressIndicationWidget(String message) {
     List<Widget> children = [
       const SizedBox(
         width: 60,
         height: 60,
         child: CircularProgressIndicator(),
       ),
-      const Padding(
-        padding: EdgeInsets.only(top: 16),
-        child: Text('Creating category...'),
+      Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: Text(message),
       ),
     ];
     return Center(
@@ -117,57 +202,69 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  Widget _listView(
+      AsyncSnapshot<void> snapshot, SupabaseProvider supabaseProvider) {
+    if (snapshot.connectionState == ConnectionState.done) {
+      var categories = supabaseProvider.categories;
+      return ListView.builder(
+        itemCount: categories.length,
+        itemBuilder: (BuildContext context, int index) {
+          return ListTile(
+            leading: const Icon(Icons.face_2_outlined),
+            title: Text(categories[index].name),
+            onTap: () {
+              context.pushNamed(
+                'categoryScreen',
+                pathParameters: {
+                  'categoryId': '${categories[index].id}',
+                  'categoryName': categories[index].name,
+                },
+              );
+            },
+            onLongPress: () async {
+              ScaffoldMessengerState scaffoldMessenger =
+                  ScaffoldMessenger.of(context);
+              var result = await confirmDismissDialogBuilder(context: context);
+              if (result == true) {
+                setState(() {
+                  _isDeleting = true;
+                });
+                await supabaseProvider.deleteCategory(
+                  categoryName: categories[index].name,
+                  categoryId: categories[index].id,
+                  scaffoldMessenger: scaffoldMessenger,
+                );
+
+                setState(() {
+                  _isDeleting = false;
+                });
+              } else {
+                AppLogger().logger.i('Decided not to delete category');
+              }
+            },
+          );
+        },
+      );
+    } else if (snapshot.hasError) {
+      AppLogger().logger.e('${snapshot.error}');
+      return Center(
+        child: Text('Error: ${snapshot.error}'),
+      );
+    } else {
+      return _progressIndicationWidget('Loading data...');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Consumer<CategoriesProvider>(builder: (BuildContext context,
-        CategoriesProvider categoriesProvider, Widget? child) {
-      var categoryNames = categoriesProvider.getCategoryNames();
-      return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.blue.shade700,
-          title: Text(
-            widget.title,
-            style: const TextStyle(
-              color: Colors.white,
-            ),
-          ),
-        ),
-        body: _isLoading ? _progressIndicationWidget() : Container(),
-        drawer: CustomDrawer(
-          categoryNames: categoryNames,
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () async {
-            final newCategory = await _dialogBuilder(
-              context: context,
-              textFieldController: textFieldController,
-            );
-            if (!categoryNames.contains(newCategory)) {
-              if (newCategory != null && newCategory.isNotEmpty) {
-                if (mounted) {
-                  await createCategory(
-                      categoryName: newCategory, context: context);
-                } else {
-                  print('Context not mounted, could not save to DB');
-                }
-                categoriesProvider.addCategory(newCategory);
-              }
-            } else {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content:
-                      Text('There is already a category with the same name'),
-                ));
-              } else {
-                print('Context not mounted');
-              }
-            }
-          },
-          tooltip: 'Add new category page',
-          child: const Icon(Icons.add),
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      );
+    if (_isDeleting) {
+      return _progressIndicationWidget('Deleting category...');
+    } else if (widget.isAddingCategory) {
+      return _progressIndicationWidget('Creating category...');
+    }
+    return Consumer<SupabaseProvider>(
+        builder: (context, supabaseProvider, child) {
+      return _listView(widget.snapshot, supabaseProvider);
     });
   }
 }
