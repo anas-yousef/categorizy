@@ -6,7 +6,9 @@ A Flutter project that helps you categorize tasks and track them.
 
 I used [supabase](https://supabase.com/) as the database, where I utilized the [deep-link](https://supabase.com/docs/guides/getting-started/tutorials/with-flutter?database-method=sql#setup-deep-links) tutorial to add email authentication.
 Example of the authentication flow:
+
 ![first](docs/1_small.jpeg) ![second](docs/2_small.jpeg) ![third](docs/3_small.jpeg) ![fourth](docs/4_small.jpeg)
+
 Where after clicking the link in your email, you will be shown the option **"Chrome" wants to open "Categorizy"**, after clicking **Open**, you will be taken to the home screen, where you can see all the configured categories.
 
 ## Features
