@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
+import '../helpers/text_dialog_builder.dart';
 import '../models/category_item.dart';
 import '../providers/supabase_provider.dart';
 import '../utilities/app_logger.dart';
@@ -164,16 +165,18 @@ class _CategoryScreenState extends State<CategoryScreen> {
               onPressed: () async {
                 ScaffoldMessengerState scaffoldMessenger =
                     ScaffoldMessenger.of(context);
-                final newCategory = await _newCategoryDialogBuilder(
+                final newCategoryItemName = await textDialogBuilder(
+                  title: 'Enter new item:',
                   context: context,
                   textFieldController: textFieldController,
                 );
-                if (newCategory != null && newCategory.isNotEmpty) {
+                if (newCategoryItemName != null &&
+                    newCategoryItemName.isNotEmpty) {
                   setState(() {
                     _isAdding = true;
                   });
                   await supabaseProvider.createCategoryItem(
-                      categoryItemName: newCategory,
+                      categoryItemName: newCategoryItemName,
                       categoryId: widget.categoryId,
                       scaffoldMessenger: scaffoldMessenger);
                   setState(() {

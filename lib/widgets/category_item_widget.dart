@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../helpers/confirm_delete_dialog_builder.dart';
+import '../helpers/text_dialog_builder.dart';
 import '../models/category_item.dart';
 
 class CategoryItemWidget extends StatefulWidget {
@@ -22,12 +23,25 @@ class CategoryItemWidget extends StatefulWidget {
 
 class _CategoryItemWidgetState extends State<CategoryItemWidget> {
   late bool _isDeleting;
-  late bool _isUpdating;
+  late bool _isUpdatingChecked;
+  late bool _isUpdatingName;
+  late TextEditingController textFieldController;
+  // late CategoryItem categoryItem;
   @override
   void initState() {
     _isDeleting = false;
-    _isUpdating = false;
+    _isUpdatingChecked = false;
+    _isUpdatingName = false;
+    textFieldController = TextEditingController();
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    // Clean up the controller when the widget is removed from the
+    // widget tree.
+    textFieldController.dispose();
+    super.dispose();
   }
 
   @override
@@ -37,7 +51,7 @@ class _CategoryItemWidgetState extends State<CategoryItemWidget> {
       height: 50,
       child: Consumer<SupabaseProvider>(
           builder: (context, supabaseProvider, child) {
-        return _isDeleting
+        return (_isDeleting || _isUpdatingName)
             ? const Center(
                 child: CircularProgressIndicator(),
               )
@@ -66,25 +80,53 @@ class _CategoryItemWidgetState extends State<CategoryItemWidget> {
                 },
                 background: Container(color: Colors.red),
                 child: ListTile(
-                  trailing: _isUpdating
+                  trailing: _isUpdatingChecked
                       ? const CircularProgressIndicator()
                       : Checkbox(
                           onChanged: (bool? value) async {
+                            ScaffoldMessengerState scaffoldMessenger =
+                                ScaffoldMessenger.of(context);
                             if (value != null) {
                               setState(() {
-                                _isUpdating = true;
+                                _isUpdatingChecked = true;
                               });
                               await supabaseProvider.updateCategoryItem(
                                   categoryItemId: categoryItem.id,
                                   newCheckedValue: value,
-                                  categoryId: categoryItem.categoryId);
+                                  categoryId: categoryItem.categoryId,
+                                  scaffoldMessenger: scaffoldMessenger);
                               setState(() {
-                                _isUpdating = false;
+                                _isUpdatingChecked = false;
                               });
                             }
                           },
                           value: categoryItem.checked,
                         ),
+                  onLongPress: () async {
+                    ScaffoldMessengerState scaffoldMessenger =
+                        ScaffoldMessenger.of(context);
+                    final newCategoryItemName = await textDialogBuilder(
+                      title: 'Update item:',
+                      context: context,
+                      textFieldController: textFieldController,
+                      clearTextFieldOnCancel: false,
+                      textFieldInitialValue: categoryItem.name,
+                    );
+                    if (newCategoryItemName != null &&
+                        newCategoryItemName.isNotEmpty) {
+                      setState(() {
+                        _isUpdatingName = true;
+                      });
+                      await supabaseProvider.updateCategoryItem(
+                          categoryItemId: categoryItem.id,
+                          newCategoryItemName: newCategoryItemName,
+                          categoryId: categoryItem.categoryId,
+                          scaffoldMessenger: scaffoldMessenger);
+                      setState(() {
+                        _isUpdatingName = false;
+                      });
+                    }
+                  },
                   title: Text(
                     categoryItem.name,
                   ),
