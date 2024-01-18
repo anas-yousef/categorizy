@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../exceptions/duplicate_key_error.dart';
 import '../utilities/app_logger.dart';
 import '../models/category.dart';
 import '../models/category_item.dart';
@@ -112,18 +113,41 @@ class SupabaseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateCategoryItem(
-      {required int categoryId,
-      required int categoryItemId,
-      required bool newCheckedValue}) async {
+  Future<void> updateCategoryItem({
+    required int categoryId,
+    required int categoryItemId,
+    required ScaffoldMessengerState scaffoldMessenger,
+    bool? newCheckedValue,
+    String? newCategoryItemName,
+  }) async {
     try {
-      CategoryItem? newCategoryItem =
-          await Future.delayed(const Duration(milliseconds: 500), () async {
-        return await SupabaseApiUtility().updateCategoryItem(
-            categoryItemId: categoryItemId, newCheckedValue: newCheckedValue);
-      });
+      CategoryItem? newCategoryItem = await Future.delayed(
+        const Duration(milliseconds: 500),
+        () async {
+          return await SupabaseApiUtility()
+              .updateCategoryItem(
+            categoryItemId: categoryItemId,
+            newCheckedValue: newCheckedValue,
+            newCategoryItemName: newCategoryItemName,
+          )
+              .catchError(
+            (error, stackTrace) {
+              if (error.runtimeType != DuplicateKeyError) {
+                throw error;
+              }
+              AppLogger().logger.i('Error caught $error');
+              return null;
+            },
+          );
+        },
+      );
       if (newCategoryItem == null) {
-        throw Exception('How come the category item is null');
+        scaffoldMessenger.showSnackBar(const SnackBar(
+          content: Text(
+              'There is already a category item with the same name, could not update'),
+        ));
+        AppLogger().logger.i('Category item was not updated');
+        return;
       }
       var categoryIndexId = getCategoryIndex(categoryId: categoryId);
       var categoryItemIndexId = getCategoryItemIndex(

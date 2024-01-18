@@ -2,6 +2,7 @@ import 'package:categorizy/utilities/app_logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import '../exceptions/duplicate_key_error.dart';
 import '../models/category.dart';
 import '../models/category_item.dart';
 
@@ -64,17 +65,38 @@ class SupabaseApiUtility {
   }
 
   Future<CategoryItem?> updateCategoryItem(
-      {required int categoryItemId, required bool newCheckedValue}) async {
-    var response = await supabaseClient.from('category_items').update(
-        {'checked': newCheckedValue}).match({'id': categoryItemId}).select();
-    return (response.isEmpty ? null : CategoryItem.fromApi(response[0]));
+      {required int categoryItemId,
+      bool? newCheckedValue,
+      String? newCategoryItemName}) async {
+    Map<String, dynamic> dataToUpdate = {
+      if (newCheckedValue != null) 'checked': newCheckedValue,
+      if (newCategoryItemName != null) 'category_item_name': newCategoryItemName
+    };
+    try {
+      var response = await supabaseClient
+          .from('category_items')
+          .update(dataToUpdate)
+          .match({'id': categoryItemId}).select();
+      return (response.isEmpty ? null : CategoryItem.fromApi(response[0]));
+    } on PostgrestException catch (postgrestException) {
+      if (postgrestException.message
+          .contains('duplicate key value violates unique constraint')) {
+        throw DuplicateKeyError(
+          message:
+              'Category item name cannot be updated, a name like that already exists',
+          mainException: postgrestException,
+        );
+      }
+    } on Exception {
+      rethrow;
+    }
+    return null;
   }
 
   Future<void> deleteCategory({required int categoryId}) async {
     await supabaseClient.from('categories').delete().match({'id': categoryId});
   }
 
-  // TODO Do we need the category ID to delete a category item?
   Future<void> deleteCategoryItem({required int categoryItemId}) async {
     await supabaseClient
         .from('category_items')

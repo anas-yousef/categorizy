@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../helpers/confirm_delete_dialog_builder.dart';
+import '../helpers/text_dialog_builder.dart';
 import '../utilities/app_logger.dart';
 
 class MainScreen extends StatefulWidget {
@@ -101,7 +102,8 @@ class _MainScreenState extends State<MainScreen> {
       body: CategoriesWidget(isAddingCategory: _isAdding),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          final newCategory = await _dialogBuilder(
+          final newCategory = await textDialogBuilder(
+            title: 'Enter new category:',
             context: context,
             textFieldController: textFieldController,
           );
