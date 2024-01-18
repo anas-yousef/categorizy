@@ -33,7 +33,6 @@ class _CategoryItemWidgetState extends State<CategoryItemWidget> {
     _isUpdatingChecked = false;
     _isUpdatingName = false;
     textFieldController = TextEditingController();
-    // categoryItem = widget.categoryItems[widget.categoryItemIndex];
     super.initState();
   }
 
@@ -48,7 +47,6 @@ class _CategoryItemWidgetState extends State<CategoryItemWidget> {
   @override
   Widget build(BuildContext context) {
     final categoryItem = widget.categoryItems[widget.categoryItemIndex];
-    // textFieldController.text = categoryItem.name;
     return SizedBox(
       height: 50,
       child: Consumer<SupabaseProvider>(
