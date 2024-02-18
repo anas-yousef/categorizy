@@ -1,17 +1,74 @@
+import 'dart:io';
+
 import 'package:dart_frog/dart_frog.dart';
+import 'package:server_api/src/repositories/category_repository.dart';
 
 Future<Response> onRequest(RequestContext context, String categoryId) async {
   if (context.request.method == HttpMethod.get) {
-    // Get category
+    return _get(context, categoryId);
   }
   if (context.request.method == HttpMethod.delete) {
     // Delete category
-  }
-  if (context.request.method == HttpMethod.patch) {
-    // Update category
+    return _delete(context, categoryId);
   }
   if (context.request.method == HttpMethod.put) {
-    // Create category
+    return _update(context, categoryId);
   }
-  return Response(body: 'Welcome to Dart Frog!');
+  else {
+    return Response(statusCode: HttpStatus.methodNotAllowed);
+  }
+}
+
+Future<Response> _delete(RequestContext context, String categoryId) async {
+  final categoryRepository = context.read<CategoryRepository>();
+  try {
+    await categoryRepository.deleteCategory(categoryId);
+    return Response.json();
+  } catch (err) {
+    // The error source should come from here
+    return Response.json(
+      body: {
+        'error': err.toString(),
+        'error_source': 'Deleting category',
+      },
+      statusCode: HttpStatus.internalServerError,
+    );
+  }
+}
+
+Future<Response> _get(RequestContext context, String categoryId) async {
+  final categoryRepository = context.read<CategoryRepository>();
+  try {
+    final category = await categoryRepository.fetchCategory(categoryId);
+    return Response.json(body: {'category': category});
+  } catch (err) {
+    return Response.json(
+      body: {
+        'error': err.toString(),
+        'error_source': 'Fetching category',
+      },
+      statusCode: HttpStatus.internalServerError,
+    );
+  }
+}
+
+Future<Response> _update(RequestContext context, String categoryId) async {
+  final categoryRepository = context.read<CategoryRepository>();
+  final body = await context.request.json() as Map<String, dynamic>;
+  final newCategoryName = body['category_name'] as String?;
+  try {
+    final newCategory = await categoryRepository.updateCategory(
+      categoryId,
+      newCategoryName: newCategoryName,
+    );
+    return Response.json(body: {'category': newCategory});
+  } catch (err) {
+    return Response.json(
+      body: {
+        'error': err.toString(),
+        'error_source': 'Updating category',
+      },
+      statusCode: HttpStatus.internalServerError,
+    );
+  }
 }
