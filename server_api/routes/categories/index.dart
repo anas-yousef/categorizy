@@ -1,18 +1,16 @@
 import 'dart:io';
 
 import 'package:dart_frog/dart_frog.dart';
-import 'package:server_api/src/repositories/categories_repository.dart';
+import 'package:server_api/src/repositories/categories/categories_repository.dart';
 
-// Entrypoint to all categories [for fetching, updating, deleting]
+// Entrypoint to all categories [for fetching, creating, deleting]
 Future<Response> onRequest(RequestContext context) async {
   if (context.request.method == HttpMethod.get) {
     return _get(context);
-  }
-  if (context.request.method == HttpMethod.delete) {
+  } else if (context.request.method == HttpMethod.delete) {
     // Delete category
     return _delete(context);
-  }
-  if (context.request.method == HttpMethod.post) {
+  } else if (context.request.method == HttpMethod.post) {
     // Create category
     return _create(context);
   } else {
@@ -38,10 +36,10 @@ Future<Response> _get(RequestContext context) async {
 
 Future<Response> _delete(RequestContext context) async {
   final categoriesRepository = context.read<CategoriesRepository>();
-  final body = await context.request.json() as Map<String, dynamic>;
-  print(body['categories']);
-  final categoryIDsToDelete = body['categories'] as List<String>;
   try {
+    final body = await context.request.json() as Map<String, dynamic>;
+    final categoryIDsToDelete =
+        List<int>.from(body['categories'] as List<dynamic>);
     await categoriesRepository.deleteCategories(categoryIDsToDelete);
     return Response.json();
   } catch (err) {
@@ -49,7 +47,7 @@ Future<Response> _delete(RequestContext context) async {
     return Response.json(
       body: {
         'error': err.toString(),
-        'error_source': 'Deleting category',
+        'error_source': 'Deleting categories',
       },
       statusCode: HttpStatus.internalServerError,
     );
@@ -58,10 +56,10 @@ Future<Response> _delete(RequestContext context) async {
 
 Future<Response> _create(RequestContext context) async {
   final categoriesRepository = context.read<CategoriesRepository>();
-  final body = await context.request.json() as Map<String, dynamic>;
-  final categoryName = body['category_name'] as String;
-  final userId = body['user_id'] as String;
   try {
+    final body = await context.request.json() as Map<String, dynamic>;
+    final categoryName = body['category_name'] as String;
+    final userId = body['user_id'] as String;
     final newCategory =
         await categoriesRepository.insertNewCategory(categoryName, userId);
     return Response.json(body: {'category': newCategory});

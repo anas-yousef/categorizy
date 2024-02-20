@@ -1,5 +1,5 @@
 import 'package:dart_frog/dart_frog.dart';
-import 'package:server_api/src/repositories/categories_repository.dart';
+import 'package:server_api/src/repositories/categories/categories_repository.dart';
 
 import '../../main.dart';
 

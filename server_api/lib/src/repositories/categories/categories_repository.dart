@@ -1,7 +1,7 @@
 import 'package:server_api/server_exception.dart';
 import 'package:supabase/supabase.dart';
 
-/// An exception class for the category repository
+/// An exception class for the categories repository
 class CategoriesRepositoryException extends ServerException {
   /// Constructor for the CategoriesRepositoryException class
   CategoriesRepositoryException({
@@ -21,9 +21,10 @@ class CategoriesRepository {
   /// Retrieve all categories
   Future<List<Map<String, dynamic>>> fetchCategories() async {
     try {
-      return await supabaseClient.from('categories').select('''
-      id,category_name,category_items(id,category_item_name,checked,category_id)
-      ''').order('created_at', ascending: false);
+      return await supabaseClient
+          .from('categories')
+          .select('*,category_items(*)')
+          .order('created_at', ascending: false);
     } catch (err) {
       throw CategoriesRepositoryException(
         errorMessage: err.toString(),
@@ -58,50 +59,15 @@ class CategoriesRepository {
   }
 
   /// Deletes a list of categories
-  Future<void> deleteCategories(List<String> categoryIds) async {
+  /// TODO Will need to check how to do a bulk delete
+  Future<void> deleteCategories(List<int> categoryIds) async {
     try {
       await supabaseClient
           .from('categories')
           .delete()
           .inFilter('id', categoryIds)
-          .limit(categoryIds.length);
-    } catch (err) {
-      throw CategoriesRepositoryException(
-        errorMessage: err.toString(),
-      );
-    }
-  }
-
-  /// Updates a category
-  Future<Map<String, dynamic>> updateCategory(
-    String categoryId, {
-    String? newCategoryName,
-  }) async {
-    final dataToUpdate = {
-      if (newCategoryName != null) 'category_name': newCategoryName,
-    };
-    try {
-      return await supabaseClient
-          .from('categories')
-          .update(dataToUpdate)
-          .match({'id': categoryId}).select('''
-      id,category_name,category_items(id,category_item_name,checked,category_id)
-      ''').single();
-    } catch (err) {
-      throw CategoriesRepositoryException(
-        errorMessage: err.toString(),
-      );
-    }
-  }
-
-  /// Deletes a category
-  Future<void> deleteCategory(String categoryId) async {
-    try {
-      await supabaseClient
-          .from('categories')
-          .delete()
-          // .match works like several .eq
-          .match({'id': categoryId}).single();
+          .limit(categoryIds.length)
+          .order('created_at');
     } catch (err) {
       throw CategoriesRepositoryException(
         errorMessage: err.toString(),
