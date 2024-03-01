@@ -65,13 +65,15 @@ class SingleCategoryRepository {
           .delete()
           // .match works like several .eq
           .match(
-        {
-          'id': categoryId,
-        },
+            {
+              'id': categoryId,
+            },
 
-        /// We use single() to ensure that the supplied category ID was indeed
-        /// found and deleted
-      ).single();
+            /// We use single() to ensure that the supplied category ID was indeed
+            /// found and deleted
+          )
+          .select()
+          .single();
     } catch (err) {
       throw SingleCategoryRepositoryException(
         errorMessage: err.toString(),

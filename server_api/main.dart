@@ -4,8 +4,10 @@ import 'package:dart_frog/dart_frog.dart';
 import 'package:dotenv/dotenv.dart';
 import 'package:server_api/src/repositories/categories/categories_repository.dart';
 import 'package:server_api/src/repositories/categories/single_category_repository.dart';
-import 'package:server_api/src/repositories/category_items/single_category_item_repository.dart';
 import 'package:server_api/src/repositories/category_items/category_items_repository.dart';
+import 'package:server_api/src/repositories/category_items/single_category_item_repository.dart';
+import 'package:server_api/src/repositories/sms_otp_authentication_repository.dart';
+
 import 'package:supabase/supabase.dart';
 
 // Category/Categories repositories
@@ -15,6 +17,9 @@ late CategoriesRepository categoriesRepository;
 // Category Item/Category Items repositories
 late SingleCategoryItemRepository singleCategoryItemRepository;
 late CategoryItemsRepository categoryItemsRepository;
+
+// Authentication repositories
+late SMSOtpAuthenticationRepository smsOtpAuthenticationRepository;
 
 Future<HttpServer> run(Handler handler, InternetAddress ip, int port) {
   final env = DotEnv(includePlatformEnvironment: true)..load();
@@ -31,6 +36,9 @@ Future<HttpServer> run(Handler handler, InternetAddress ip, int port) {
       SingleCategoryItemRepository(supabaseClient: supabaseClient);
   categoryItemsRepository =
       CategoryItemsRepository(supabaseClient: supabaseClient);
+
+  smsOtpAuthenticationRepository =
+      SMSOtpAuthenticationRepository(supabaseClient: supabaseClient);
 
   return serve(handler, ip, port);
 }

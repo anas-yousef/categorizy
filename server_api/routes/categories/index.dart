@@ -7,9 +7,9 @@ import 'package:server_api/src/repositories/categories/categories_repository.dar
 Future<Response> onRequest(RequestContext context) async {
   if (context.request.method == HttpMethod.get) {
     return _get(context);
-  } else if (context.request.method == HttpMethod.delete) {
-    // Delete category
-    return _delete(context);
+    // } else if (context.request.method == HttpMethod.delete) {
+    //   // Delete category
+    //   return _delete(context);
   } else if (context.request.method == HttpMethod.post) {
     // Create category
     return _create(context);
@@ -34,25 +34,25 @@ Future<Response> _get(RequestContext context) async {
   }
 }
 
-Future<Response> _delete(RequestContext context) async {
-  final categoriesRepository = context.read<CategoriesRepository>();
-  try {
-    final body = await context.request.json() as Map<String, dynamic>;
-    final categoryIDsToDelete =
-        List<int>.from(body['categories'] as List<dynamic>);
-    await categoriesRepository.deleteCategories(categoryIDsToDelete);
-    return Response.json();
-  } catch (err) {
-    // The error source should come from here
-    return Response.json(
-      body: {
-        'error': err.toString(),
-        'error_source': 'Deleting categories',
-      },
-      statusCode: HttpStatus.internalServerError,
-    );
-  }
-}
+// Future<Response> _delete(RequestContext context) async {
+//   final categoriesRepository = context.read<CategoriesRepository>();
+//   try {
+//     final body = await context.request.json() as Map<String, dynamic>;
+//     final categoryIDsToDelete =
+//         List<int>.from(body['categories'] as List<dynamic>);
+//     await categoriesRepository.deleteCategories(categoryIDsToDelete);
+//     return Response.json();
+//   } catch (err) {
+//     // The error source should come from here
+//     return Response.json(
+//       body: {
+//         'error': err.toString(),
+//         'error_source': 'Deleting categories',
+//       },
+//       statusCode: HttpStatus.internalServerError,
+//     );
+//   }
+// }
 
 Future<Response> _create(RequestContext context) async {
   final categoriesRepository = context.read<CategoriesRepository>();
