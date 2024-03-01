@@ -21,21 +21,21 @@ Future<Response> _createOrRefreshSession(RequestContext context) async {
     final refreshToken = body['refresh_token'] as String?;
     final phoneNumber = body['phone_number'] as String?;
     final Map<String, String> tokens;
-    if (otpToken != null && phoneNumber != null) {
+    if (otpToken != null && phoneNumber != null && refreshToken == null) {
       tokens = await smsOtpAuthenticationRepository.verifyAndLoginUserOtp(
         phoneNumber,
         otpToken,
       );
-    }
-    else if (refreshToken != null)
-    {
+    } else if (refreshToken != null &&
+        otpToken == null &&
+        phoneNumber == null) {
       tokens = await smsOtpAuthenticationRepository.refreshAccessToken(
         refreshToken,
       );
-    }
-    else
-    {
-      throw Exception('Not enough arguments to create/refresh session');
+    } else {
+      throw Exception(
+        'Error in supplying the arguments to create, or refresh session',
+      );
     }
     return Response.json(body: {'auth': tokens});
   } catch (err) {
