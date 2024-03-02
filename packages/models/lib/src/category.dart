@@ -30,7 +30,7 @@ class Category extends Equatable {
       };
 
   factory Category.fromJson(Map<String, dynamic> json) {
-    var jsonCategoryItems = json['categoryItems'];
+    var jsonCategoryItems = json['category_items'];
     return Category(
       id: json['id'],
       name: json['name'],

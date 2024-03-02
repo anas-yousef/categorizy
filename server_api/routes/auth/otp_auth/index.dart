@@ -1,11 +1,11 @@
 import 'dart:io';
 
 import 'package:dart_frog/dart_frog.dart';
-import 'package:server_api/src/repositories/sms_otp_authentication_repository.dart';
+import 'package:server_api/src/repositories/sms_otp_repository.dart';
 
 Future<Response> onRequest(RequestContext context) async {
   if (context.request.method == HttpMethod.post) {
-    // Create category
+    // Create or refresh session
     return _createOrRefreshSession(context);
   } else {
     return Response(statusCode: HttpStatus.methodNotAllowed);
@@ -13,8 +13,7 @@ Future<Response> onRequest(RequestContext context) async {
 }
 
 Future<Response> _createOrRefreshSession(RequestContext context) async {
-  final smsOtpAuthenticationRepository =
-      context.read<SMSOtpAuthenticationRepository>();
+  final smsOtpRepository = context.read<SMSOtpRepository>();
   try {
     final body = await context.request.json() as Map<String, dynamic>;
     final otpToken = body['otp_token'] as String?;
@@ -22,14 +21,14 @@ Future<Response> _createOrRefreshSession(RequestContext context) async {
     final phoneNumber = body['phone_number'] as String?;
     final Map<String, String> tokens;
     if (otpToken != null && phoneNumber != null && refreshToken == null) {
-      tokens = await smsOtpAuthenticationRepository.verifyAndLoginUserOtp(
+      tokens = await smsOtpRepository.verifyAndLoginUserOtp(
         phoneNumber,
         otpToken,
       );
     } else if (refreshToken != null &&
         otpToken == null &&
         phoneNumber == null) {
-      tokens = await smsOtpAuthenticationRepository.refreshAccessToken(
+      tokens = await smsOtpRepository.refreshAccessToken(
         refreshToken,
       );
     } else {

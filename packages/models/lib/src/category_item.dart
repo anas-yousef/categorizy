@@ -22,7 +22,7 @@ class CategoryItem extends Equatable {
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'categoryId': categoryId,
+        'category_id': categoryId,
         'name': name,
         'checked': checked,
       };
@@ -30,7 +30,7 @@ class CategoryItem extends Equatable {
   factory CategoryItem.fromJson(Map<String, dynamic> json) {
     return CategoryItem(
       id: json['id'],
-      categoryId: json['categoryId'],
+      categoryId: json['category_id'],
       name: json['name'],
       checked: json['checked'],
     );

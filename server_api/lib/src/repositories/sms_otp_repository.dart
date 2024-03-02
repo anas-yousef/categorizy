@@ -1,22 +1,21 @@
 import 'package:server_api/server_exception.dart';
 import 'package:supabase/supabase.dart';
 
-/// An exception class for the authentication repository
-class SMSOtpAuthenticationRepositoryException extends ServerException {
-  /// Constructor for the SMSOtpAuthenticationRepositoryException class
-  SMSOtpAuthenticationRepositoryException({
+/// An exception class for the SMS OTP repository
+class SMSOtpRepositoryException extends ServerException {
+  /// Constructor for the SMSOtpRepositoryException class
+  SMSOtpRepositoryException({
     required String errorMessage,
     super.errorBody,
   }) : super(
-          errorMessage:
-              'SMSOtpAuthenticationRepositoryException -> $errorMessage',
+          errorMessage: 'SMSOtpRepositoryException -> $errorMessage',
         );
 }
 
 /// SMS OTP authentication
-class SMSOtpAuthenticationRepository {
+class SMSOtpRepository {
   /// Constructor
-  const SMSOtpAuthenticationRepository({required this.supabaseClient});
+  const SMSOtpRepository({required this.supabaseClient});
 
   /// The supabase client
   final SupabaseClient supabaseClient;
@@ -30,7 +29,7 @@ class SMSOtpAuthenticationRepository {
         phone: phoneNumber,
       );
     } catch (err) {
-      throw SMSOtpAuthenticationRepositoryException(
+      throw SMSOtpRepositoryException(
         errorMessage: err.toString(),
       );
     }
@@ -53,7 +52,7 @@ class SMSOtpAuthenticationRepository {
         'refresh_token': session.refreshToken!,
       };
     } catch (err) {
-      throw SMSOtpAuthenticationRepositoryException(
+      throw SMSOtpRepositoryException(
         errorMessage: err.toString(),
       );
     }
@@ -71,7 +70,7 @@ class SMSOtpAuthenticationRepository {
         'refresh_token': session.refreshToken!,
       };
     } catch (err) {
-      throw SMSOtpAuthenticationRepositoryException(
+      throw SMSOtpRepositoryException(
         errorMessage: err.toString(),
       );
     }

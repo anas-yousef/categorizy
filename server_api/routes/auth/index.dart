@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:dart_frog/dart_frog.dart';
-import 'package:server_api/src/repositories/sms_otp_authentication_repository.dart';
+import 'package:server_api/src/repositories/sms_otp_repository.dart';
 
 Future<Response> onRequest(RequestContext context) async {
   if (context.request.method == HttpMethod.post) {
@@ -13,15 +13,14 @@ Future<Response> onRequest(RequestContext context) async {
 }
 
 Future<Response> _sendOtp(RequestContext context) async {
-  final smsOtpAuthenticationRepository =
-      context.read<SMSOtpAuthenticationRepository>();
+  final smsOtpRepository = context.read<SMSOtpRepository>();
   try {
     final body = await context.request.json() as Map<String, dynamic>;
     final phoneNumber = body['phone_number'] as String?;
     if (phoneNumber == null) {
       throw Exception('Phone number is missing');
     }
-    await smsOtpAuthenticationRepository.sendOtpToUser(
+    await smsOtpRepository.sendOtpToUser(
       phoneNumber,
     );
     return Response.json();

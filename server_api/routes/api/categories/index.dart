@@ -5,6 +5,7 @@ import 'package:server_api/src/repositories/categories/categories_repository.dar
 
 // Entrypoint to all categories [for fetching, creating, deleting]
 Future<Response> onRequest(RequestContext context) async {
+  print(context.request);
   if (context.request.method == HttpMethod.get) {
     return _get(context);
     // } else if (context.request.method == HttpMethod.delete) {
